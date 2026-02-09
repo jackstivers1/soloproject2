@@ -1,10 +1,12 @@
-import json
-import os
+import json, os
 
 def handler(event, context):
     path = os.path.join(os.path.dirname(__file__), "data.json")
-    new_item = json.loads(event["body"])
+    if not os.path.exists(path):
+        with open(path, "w") as f:
+            json.dump([], f)
 
+    new_item = json.loads(event["body"])
     with open(path, "r") as f:
         items = json.load(f)
 
