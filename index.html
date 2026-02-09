@@ -163,8 +163,7 @@ li {
 </div>
 
 <script>
-const GET_API = "http://localhost/api/get_books.php";
-const ADD_API = "http://localhost/api/add_book.php";
+const API = "http://localhost/api";
 
 let items = [];
 let currentPage = 1;
@@ -172,7 +171,7 @@ const perPage = 10;
 
 /* ---------- LOAD ---------- */
 function loadItems() {
-  fetch(GET_API)
+  fetch(`${API}/get_books.php`)
     .then(r => r.json())
     .then(data => {
       items = data;
@@ -188,7 +187,7 @@ function showView(view) {
   statsView.style.display = view === "statsView" ? "block" : "none";
 }
 
-/* ---------- LIST (PAGED) ---------- */
+/* ---------- LIST ---------- */
 function renderItems() {
   list.innerHTML = "";
   const start = (currentPage - 1) * perPage;
@@ -199,7 +198,7 @@ function renderItems() {
     li.innerHTML = `
       <b>${item.name}</b> (${item.date})<br>
       ${item.genre} — ${item.author} (id: ${item.id})<br>
-      <button onclick="confirmDelete(${item.id})">Delete</button>
+      <button onclick="deleteItem(${item.id})">Delete</button>
     `;
     list.appendChild(li);
   });
@@ -230,42 +229,41 @@ function addItem() {
     author: author.value
   };
 
-  if (!book.name || !book.genre || !book.author || isNaN(book.date))
-    return alert("All fields required, date must be a number");
-
-  fetch(ADD_API, {
+  fetch(`${API}/add_book.php`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(book)
-  }).then(() => {
-    loadItems();
-    name.value = date.value = genre.value = author.value = "";
-  });
+  }).then(loadItems);
+
+  name.value = date.value = genre.value = author.value = "";
 }
 
-/* ---------- DELETE (FRONTEND ONLY) ---------- */
-function confirmDelete(id) {
-  if (confirm("Are you sure?")) {
-    items = items.filter(i => i.id !== id);
-    renderItems();
-    renderPagination();
-    loadStats();
-  }
+/* ---------- DELETE (PERSISTED) ---------- */
+function deleteItem(id) {
+  if (!confirm("Delete this book?")) return;
+
+  fetch(`${API}/delete_book.php`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id })
+  }).then(loadItems);
 }
 
-/* ---------- EDIT (FRONTEND ONLY DEMO) ---------- */
+/* ---------- EDIT (PERSISTED) ---------- */
 function editItem() {
-  const id = Number(editSearch.value);
-  const item = items.find(i => i.id === id);
-  if (!item) return alert("Book not found");
+  const book = {
+    id: Number(editSearch.value),
+    name: editName.value,
+    date: editDate.value,
+    genre: editGenre.value,
+    author: editAuthor.value
+  };
 
-  if (editName.value) item.name = editName.value;
-  if (editDate.value) item.date = editDate.value;
-  if (editGenre.value) item.genre = editGenre.value;
-  if (editAuthor.value) item.author = editAuthor.value;
-
-  renderItems();
-  loadStats();
+  fetch(`${API}/edit_book.php`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(book)
+  }).then(loadItems);
 }
 
 /* ---------- STATS ---------- */
@@ -289,3 +287,4 @@ loadItems();
 
 </body>
 </html>
+
