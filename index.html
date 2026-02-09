@@ -1,194 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Collection Manager</title>
-<style>
-  /* Basic reset & layout */
-  * { box-sizing: border-box; }
-  body { font-family: Arial; max-width: 900px; margin: 40px auto; background: #f4f6f8; color: #333; }
-  .container { display: flex; gap: 30px; margin-bottom: 40px; }
-  .form-box { flex: 1; background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
-  .form-box h3 { text-align:center; margin-bottom:15px; }
-  input { width:100%; padding:10px; margin-bottom:10px; border-radius:6px; border:1px solid #ccc; }
-  input:focus { outline:none; border-color:#4a90e2; box-shadow:0 0 0 2px rgba(74,144,226,0.2); }
-  button { width:100%; padding:10px; border:none; border-radius:6px; background:#4a90e2; color:white; font-weight:bold; cursor:pointer; transition:0.2s; }
-  button:hover { background:#357abd; }
-  .view-buttons { text-align:center; margin-bottom:20px; }
-  .view-buttons button { width:auto; margin:0 5px; }
-  .stats-container { max-width:500px; margin:0 auto; background:white; padding:24px; border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,0.08); }
-  .stat-card { display:flex; justify-content:space-between; align-items:center; background:#eef2ff; padding:16px; border-radius:10px; margin-bottom:20px; }
-  .stat-label { font-size:16px; color:#555; }
-  .stat-value { font-size:28px; font-weight:bold; color:#4f46e5; }
-  .stats-list li { background:#f1f5f9; padding:12px 16px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; font-weight:500; }
-  ul { list-style:none; padding:0; }
-  li { background:white; padding:12px 15px; border-radius:6px; margin-bottom:10px; box-shadow:0 2px 5px rgba(0,0,0,0.05); }
-  .pagination { text-align:center; margin-top:20px; }
-  .pagination button { margin:0 3px; }
-  @media (max-width:700px){ .container{flex-direction:column;} }
-</style>
+  <title>Book Library</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="container">
-  <!-- ADD FORM -->
-  <div class="form-box">
-    <h3>Add Book</h3>
-    <input id="name" placeholder="Name">
-    <input id="date" placeholder="Date Published">
-    <input id="genre" placeholder="Genre">
-    <input id="author" placeholder="Author">
-    <button onclick="addItem()">Add Item</button>
-  </div>
+<h1>Library</h1>
 
-  <!-- EDIT FORM -->
-  <div class="form-box">
-    <h3>Edit Book</h3>
-    <input id="editSearch" placeholder="id">
-    <input id="editName" placeholder="New Name">
-    <input id="editDate" placeholder="New Date">
-    <input id="editGenre" placeholder="New Genre">
-    <input id="editAuthor" placeholder="New Author">
-    <button onclick="editItem()">Save Changes</button>
-  </div>
-</div>
+<form id="bookForm">
+  <input id="name" placeholder="Title" required>
+  <input id="author" placeholder="Author" required>
+  <input id="genre" placeholder="Genre" required>
+  <input id="date" placeholder="Year" required>
+  <button>Add Book</button>
+</form>
 
-<!-- View toggle buttons -->
-<div class="view-buttons">
-  <button onclick="showView('listView')">List View</button>
-  <button onclick="showView('statsView')">Stats View</button>
-</div>
+<h2>Stats</h2>
+<div id="stats"></div>
 
-<!-- LIST VIEW -->
-<div id="listView">
-  <ul id="list"></ul>
-  <div class="pagination" id="pagination"></div>
-</div>
+<h2>Books</h2>
+<ul id="list"></ul>
 
-<!-- STATS VIEW -->
-<div id="statsView" style="display:none;">
-  <div class="stats-container">
-    <h2>Statistics</h2>
-    <div class="stat-card">
-      <span class="stat-label">Total Records</span>
-      <span class="stat-value" id="totalRecords">0</span>
-    </div>
-    <h3>Items per Genre</h3>
-    <ul id="categoryStats" class="stats-list"></ul>
-  </div>
-</div>
+<div id="pagination"></div>
 
-<script>
-let items = [];
-let currentPage = 1;
-const perPage = 10;
-
-/* ---------- VIEW ---------- */
-function showView(view){
-  document.getElementById('listView').style.display = view==='listView'?'block':'none';
-  document.getElementById('statsView').style.display = view==='statsView'?'block':'none';
-}
-
-/* ---------- FETCH ITEMS ---------- */
-async function loadItems(){
-  try{
-    const res = await fetch("/.netlify/functions/get_items");
-    items = await res.json();
-    renderItems(currentPage);
-    renderPagination();
-    loadStats();
-  } catch(e){
-    console.error("Failed to fetch items:", e);
-  }
-}
-
-/* ---------- RENDER ---------- */
-function renderItems(page){
-  const list = document.getElementById("list");
-  list.innerHTML = "";
-  const start = (page-1)*perPage;
-  const pageItems = items.slice(start, start+perPage);
-  pageItems.forEach(item=>{
-    const li = document.createElement("li");
-    li.innerHTML = `<b>${item.name}</b> (${item.date})<br>${item.genre} — ${item.author} (id: ${item.id})<br><button onclick="confirmDelete(${item.id})">Delete</button>`;
-    list.appendChild(li);
-  });
-}
-
-/* ---------- PAGINATION ---------- */
-function renderPagination(){
-  const pages = Math.ceil(items.length/perPage);
-  const container = document.getElementById("pagination");
-  container.innerHTML = "";
-  for(let i=1;i<=pages;i++){
-    const btn = document.createElement("button");
-    btn.textContent = i;
-    if(i===currentPage) btn.style.fontWeight="bold";
-    btn.onclick = ()=>{ currentPage=i; renderItems(i); renderPagination(); };
-    container.appendChild(btn);
-  }
-}
-
-/* ---------- ADD ---------- */
-async function addItem(){
-  const name=document.getElementById("name").value;
-  const date=document.getElementById("date").value;
-  const genre=document.getElementById("genre").value;
-  const author=document.getElementById("author").value;
-  if(!name||!date||!genre||!author) return alert("All fields required.");
-  const item={id:Date.now(), name, date, genre, author};
-  try{
-    await fetch("/.netlify/functions/add_item",{method:"POST",body:JSON.stringify(item)});
-    document.getElementById("name").value="";
-    document.getElementById("date").value="";
-    document.getElementById("genre").value="";
-    document.getElementById("author").value="";
-    await loadItems();
-  }catch(e){console.error(e);}
-}
-
-/* ---------- EDIT ---------- */
-async function editItem(){
-  const searchId=Number(document.getElementById("editSearch").value.trim());
-  const update={ id: searchId };
-  ["editName","editDate","editGenre","editAuthor"].forEach(id=>{
-    const val=document.getElementById(id).value;
-    if(val) update[id.replace("edit","").toLowerCase()]=val;
-  });
-  try{
-    await fetch("/.netlify/functions/edit_item",{method:"POST",body:JSON.stringify(update)});
-    ["editSearch","editName","editDate","editGenre","editAuthor"].forEach(id=>document.getElementById(id).value="");
-    await loadItems();
-  }catch(e){console.error(e);}
-}
-
-/* ---------- DELETE ---------- */
-async function deleteItem(id){
-  try{
-    await fetch("/.netlify/functions/delete_item",{method:"POST",body:JSON.stringify({id})});
-    if(items.length-1<=(currentPage-1)*perPage) currentPage=Math.max(1,currentPage-1);
-    await loadItems();
-  }catch(e){console.error(e);}
-}
-function confirmDelete(id){if(confirm("Are you sure?")) deleteItem(id);}
-
-/* ---------- STATS ---------- */
-function loadStats(){
-  document.getElementById("totalRecords").textContent=items.length;
-  const genreCount={};
-  items.forEach(i=>genreCount[i.genre]=(genreCount[i.genre]||0)+1);
-  const list=document.getElementById("categoryStats");
-  list.innerHTML="";
-  for(let genre in genreCount){
-    const li=document.createElement("li");
-    li.textContent=`${genre}: ${genreCount[genre]}`;
-    list.appendChild(li);
-  }
-}
-
-/* ---------- INITIAL ---------- */
-loadItems();
-</script>
-
+<script src="app.js"></script>
 </body>
 </html>
