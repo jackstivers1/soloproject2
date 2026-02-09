@@ -1,5 +1,4 @@
-import json
-import os
+import json, os
 
 def handler(event, context):
     path = os.path.join(os.path.dirname(__file__), "data.json")
@@ -10,7 +9,6 @@ def handler(event, context):
 
     for item in items:
         if item["id"] == update.get("id"):
-            # Only update non-empty fields
             for key in ["name", "date", "genre", "author"]:
                 if update.get(key):
                     item[key] = update[key]
