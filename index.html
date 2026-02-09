@@ -222,20 +222,33 @@ function renderPagination() {
 
 /* ---------- ADD ---------- */
 function addItem() {
-  const book = {
-    name: name.value,
-    date: date.value,
-    genre: genre.value,
-    author: author.value
-  };
+  const name = document.getElementById("name").value;
+  const date = document.getElementById("date").value;
+  const genre = document.getElementById("genre").value;
+  const author = document.getElementById("author").value;
 
-  fetch(`${API}/add_book.php`, {
+  if (!name || !date || !genre || !author) return alert("All fields required.");
+
+  fetch("http://localhost/api/add_book.php", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(book)
-  }).then(loadItems);
-
-  name.value = date.value = genre.value = author.value = "";
+    body: JSON.stringify({ name, date, genre, author })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.error) {
+      alert("Error: " + data.error);
+    } else {
+      console.log("Added book:", data.book);
+      loadItems(); // reload list from get_books.php
+      // clear inputs
+      document.getElementById("name").value = "";
+      document.getElementById("date").value = "";
+      document.getElementById("genre").value = "";
+      document.getElementById("author").value = "";
+    }
+  })
+  .catch(err => console.error(err));
 }
 
 /* ---------- DELETE (PERSISTED) ---------- */
@@ -287,4 +300,5 @@ loadItems();
 
 </body>
 </html>
+
 
