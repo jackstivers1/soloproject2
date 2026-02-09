@@ -1,29 +1,291 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Book Library</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<title>Collection Manager</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  font-family: Arial, sans-serif;
+  max-width: 900px;
+  margin: 40px auto;
+  background: #f4f6f8;
+  color: #333;
+}
+
+.container {
+  display: flex;
+  gap: 30px;
+  margin-bottom: 40px;
+}
+
+.form-box {
+  flex: 1;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+
+.form-box h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  background: #4a90e2;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover { background: #357abd; }
+
+.view-buttons {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.view-buttons button {
+  width: auto;
+  margin: 0 5px;
+}
+
+ul { list-style: none; padding: 0; }
+
+li {
+  background: white;
+  padding: 12px 15px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.stats-container {
+  max-width: 500px;
+  margin: 0 auto;
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+}
+
+.stat-card {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px;
+  background: #eef2ff;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.stats-list li {
+  background: #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+}
+
+#pagination {
+  text-align: center;
+  margin-top: 20px;
+}
+
+#pagination button {
+  width: auto;
+  margin: 0 5px;
+}
+</style>
 </head>
+
 <body>
 
-<h1>Library</h1>
+<div class="container">
 
-<form id="bookForm">
-  <input id="name" placeholder="Title" required>
-  <input id="author" placeholder="Author" required>
-  <input id="genre" placeholder="Genre" required>
-  <input id="date" placeholder="Year" required>
-  <button>Add Book</button>
-</form>
+  <!-- ADD -->
+  <div class="form-box">
+    <h3>Add Book</h3>
+    <input id="name" placeholder="Name">
+    <input id="date" placeholder="Date Published">
+    <input id="genre" placeholder="Genre">
+    <input id="author" placeholder="Author">
+    <button onclick="addItem()">Add Item</button>
+  </div>
 
-<h2>Stats</h2>
-<div id="stats"></div>
+  <!-- EDIT (UI kept, logic unchanged for now) -->
+  <div class="form-box">
+    <h3>Edit Book</h3>
+    <input id="editSearch" placeholder="id">
+    <input id="editName" placeholder="New Name">
+    <input id="editDate" placeholder="New Date">
+    <input id="editGenre" placeholder="New Genre">
+    <input id="editAuthor" placeholder="New Author">
+    <button onclick="editItem()">Save Changes</button>
+  </div>
 
-<h2>Books</h2>
-<ul id="list"></ul>
+</div>
 
-<div id="pagination"></div>
+<div class="view-buttons">
+  <button onclick="showView('listView')">List View</button>
+  <button onclick="showView('statsView')">Stats View</button>
+</div>
 
-<script src="app.js"></script>
+<!-- LIST VIEW -->
+<div id="listView">
+  <ul id="list"></ul>
+  <div id="pagination"></div>
+</div>
+
+<!-- STATS VIEW -->
+<div id="statsView" style="display:none;">
+  <div class="stats-container">
+    <h2>Statistics</h2>
+    <div class="stat-card">
+      <span>Total Records</span>
+      <span id="totalRecords">0</span>
+    </div>
+    <h3>Items per Genre</h3>
+    <ul id="categoryStats" class="stats-list"></ul>
+  </div>
+</div>
+
+<script>
+const GET_API = "http://localhost/api/get_books.php";
+const ADD_API = "http://localhost/api/add_book.php";
+
+let items = [];
+let currentPage = 1;
+const perPage = 10;
+
+/* ---------- LOAD ---------- */
+function loadItems() {
+  fetch(GET_API)
+    .then(r => r.json())
+    .then(data => {
+      items = data;
+      renderItems();
+      renderPagination();
+      loadStats();
+    });
+}
+
+/* ---------- VIEW ---------- */
+function showView(view) {
+  listView.style.display = view === "listView" ? "block" : "none";
+  statsView.style.display = view === "statsView" ? "block" : "none";
+}
+
+/* ---------- LIST (PAGED) ---------- */
+function renderItems() {
+  list.innerHTML = "";
+  const start = (currentPage - 1) * perPage;
+  const pageItems = items.slice(start, start + perPage);
+
+  pageItems.forEach(item => {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <b>${item.name}</b> (${item.date})<br>
+      ${item.genre} — ${item.author} (id: ${item.id})<br>
+      <button onclick="confirmDelete(${item.id})">Delete</button>
+    `;
+    list.appendChild(li);
+  });
+}
+
+/* ---------- PAGINATION ---------- */
+function renderPagination() {
+  pagination.innerHTML = "";
+  const pages = Math.ceil(items.length / perPage);
+
+  for (let i = 1; i <= pages; i++) {
+    const btn = document.createElement("button");
+    btn.textContent = i;
+    btn.onclick = () => {
+      currentPage = i;
+      renderItems();
+    };
+    pagination.appendChild(btn);
+  }
+}
+
+/* ---------- ADD ---------- */
+function addItem() {
+  const book = {
+    name: name.value,
+    date: date.value,
+    genre: genre.value,
+    author: author.value
+  };
+
+  if (!book.name || !book.genre || !book.author || isNaN(book.date))
+    return alert("All fields required, date must be a number");
+
+  fetch(ADD_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(book)
+  }).then(() => {
+    loadItems();
+    name.value = date.value = genre.value = author.value = "";
+  });
+}
+
+/* ---------- DELETE (FRONTEND ONLY) ---------- */
+function confirmDelete(id) {
+  if (confirm("Are you sure?")) {
+    items = items.filter(i => i.id !== id);
+    renderItems();
+    renderPagination();
+    loadStats();
+  }
+}
+
+/* ---------- EDIT (FRONTEND ONLY DEMO) ---------- */
+function editItem() {
+  const id = Number(editSearch.value);
+  const item = items.find(i => i.id === id);
+  if (!item) return alert("Book not found");
+
+  if (editName.value) item.name = editName.value;
+  if (editDate.value) item.date = editDate.value;
+  if (editGenre.value) item.genre = editGenre.value;
+  if (editAuthor.value) item.author = editAuthor.value;
+
+  renderItems();
+  loadStats();
+}
+
+/* ---------- STATS ---------- */
+function loadStats() {
+  totalRecords.textContent = items.length;
+  categoryStats.innerHTML = "";
+
+  const counts = {};
+  items.forEach(i => counts[i.genre] = (counts[i.genre] || 0) + 1);
+
+  for (let g in counts) {
+    const li = document.createElement("li");
+    li.textContent = `${g}: ${counts[g]}`;
+    categoryStats.appendChild(li);
+  }
+}
+
+/* ---------- INIT ---------- */
+loadItems();
+</script>
+
 </body>
 </html>
